@@ -45,6 +45,7 @@ UART_HandleTypeDef huart1;
 /* USER CODE BEGIN PV */
 uint8_t rx[1] = {'\0'};
 uint8_t tx[1] = {'\0'};
+uint8_t flag = 0;
 RingBuffer ringbuf;
 /* USER CODE END PV */
 
@@ -228,22 +229,25 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
-	if(huart == &huart1) {/*
+	if(huart == &huart1) {
 		if(RingBuffer_GetDataLength(&ringbuf) > 0) {
 			uint16_t len = RingBuffer_GetDataLength(&ringbuf);
 			uint8_t Buffer[len];
 			RingBuffer_Read(&ringbuf, Buffer, sizeof(Buffer));
 			HAL_UART_Transmit_IT(&huart1, Buffer, len);
-		} else {
+		} else if(flag == 0) {
+			flag = 1;
+			HAL_UART_Transmit_IT(&huart1, (uint8_t*)"\n\r", sizeof("\n\r"));
+		} else if(flag == 1) {
+			flag = 0;
 			HAL_UART_Receive_IT(&huart1, rx, sizeof(rx));
-		}*/
-		HAL_UART_Receive_IT(&huart1, rx, sizeof(rx));
+		}
 		HAL_GPIO_TogglePin(L1_GPIO_Port, L1_Pin);
 	}
 }
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-	if(huart == &huart1) {/*
-		if(rx[0] == '\n') {
+	if(huart == &huart1) {
+		if(rx[0] == '\r') {
 			uint16_t len = RingBuffer_GetDataLength(&ringbuf);
 			uint8_t Buffer[len];
 			RingBuffer_Read(&ringbuf, Buffer, sizeof(Buffer));
@@ -251,9 +255,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		} else {
 			RingBuffer_Write(&ringbuf, rx, sizeof(rx));
 			HAL_UART_Receive_IT(&huart1, rx, sizeof(rx));
-		}*/
-		tx[0] = rx[0];
-		HAL_UART_Transmit_IT(&huart1, tx, sizeof(tx));
+		}
 		HAL_GPIO_TogglePin(L2_GPIO_Port, L2_Pin);
 	}
 }
