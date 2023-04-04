@@ -199,7 +199,16 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
-
+	if(huart == &huart1) {
+		if(RingBuffer_GetDataLength(&ringbuf) > 0) {
+			uint16_t len = RingBuffer_GetDataLength(&rinBuf);
+			uint8_t Buffer[len];
+			RingBuffer_Read(&rinBuf, Buffer, sizeof(Buffer));
+			HAL_UART_Transmit_IT(&huart1, Buffer, len);
+		} else {
+			HAL_UART_Receive_IT(&huart1, rx, sizeof(rx));
+		}
+	}
 }
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	if(huart == &huart1) {
