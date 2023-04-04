@@ -52,6 +52,7 @@ RingBuffer ringbuf;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_NVIC_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -90,13 +91,18 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART1_UART_Init();
+
+  /* Initialize interrupts */
+  MX_NVIC_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  HAL_UART_Receive_IT(&huart1, rx, sizeof(rx));
+  HAL_GPIO_TogglePin(L2_GPIO_Port, L2_Pin);
+  HAL_UART_Transmit_IT(&huart1, (uint8_t*)"Console 1 \r\n", sizeof("Console 1 \r\n"));
+  HAL_GPIO_TogglePin(L2_GPIO_Port, L1_Pin);
   while (1)
   {
     /* USER CODE END WHILE */
@@ -148,6 +154,17 @@ void SystemClock_Config(void)
 }
 
 /**
+  * @brief NVIC Configuration.
+  * @retval None
+  */
+static void MX_NVIC_Init(void)
+{
+  /* USART1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(USART1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(USART1_IRQn);
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -187,6 +204,7 @@ static void MX_USART1_UART_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 /* USER CODE BEGIN MX_GPIO_Init_1 */
 /* USER CODE END MX_GPIO_Init_1 */
 
@@ -194,27 +212,38 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, L1_Pin|L2_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : L1_Pin L2_Pin */
+  GPIO_InitStruct.Pin = L1_Pin|L2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
-	/*
-	if(huart == &huart1) {
+	if(huart == &huart1) {/*
 		if(RingBuffer_GetDataLength(&ringbuf) > 0) {
 			uint16_t len = RingBuffer_GetDataLength(&ringbuf);
 			uint8_t Buffer[len];
 			RingBuffer_Read(&ringbuf, Buffer, sizeof(Buffer));
 			HAL_UART_Transmit_IT(&huart1, Buffer, len);
-		} else {*/
-			HAL_UART_Receive_IT(&huart1, rx, sizeof(rx));/*
-		}
-	}*/
+		} else {
+			HAL_UART_Receive_IT(&huart1, rx, sizeof(rx));
+		}*/
+		HAL_UART_Receive_IT(&huart1, rx, sizeof(rx));
+		HAL_GPIO_TogglePin(L1_GPIO_Port, L1_Pin);
+	}
 }
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-	if(huart == &huart1) {
-		if(rx[0] == '\r') {
+	if(huart == &huart1) {/*
+		if(rx[0] == '\n') {
 			uint16_t len = RingBuffer_GetDataLength(&ringbuf);
 			uint8_t Buffer[len];
 			RingBuffer_Read(&ringbuf, Buffer, sizeof(Buffer));
@@ -222,7 +251,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		} else {
 			RingBuffer_Write(&ringbuf, rx, sizeof(rx));
 			HAL_UART_Receive_IT(&huart1, rx, sizeof(rx));
-		}
+		}*/
+		tx[0] = rx[0];
+		HAL_UART_Transmit_IT(&huart1, tx, sizeof(tx));
+		HAL_GPIO_TogglePin(L2_GPIO_Port, L2_Pin);
 	}
 }
 /* USER CODE END 4 */
