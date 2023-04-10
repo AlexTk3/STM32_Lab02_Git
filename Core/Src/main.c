@@ -47,6 +47,12 @@ uint8_t rx[1] = {'\0'};
 uint8_t tx[1] = {'\0'};
 uint8_t flag = 0;
 RingBuffer ringbuf;
+
+uint8_t BufferRx[255];
+uint8_t BufferTx[255];
+
+volatile uint16_t lenRx;
+volatile uint16_t lenTx;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -231,10 +237,9 @@ static void MX_GPIO_Init(void)
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 	if(huart == &huart1) {
 		if(RingBuffer_GetDataLength(&ringbuf) > 0) {
-			uint16_t len = RingBuffer_GetDataLength(&ringbuf);
-			uint8_t Buffer[len];
-			RingBuffer_Read(&ringbuf, Buffer, sizeof(Buffer));
-			HAL_UART_Transmit_IT(&huart1, Buffer, len);
+			lenTx = RingBuffer_GetDataLength(&ringbuf);
+			RingBuffer_Read(&ringbuf, BufferTx, lenTx);
+			HAL_UART_Transmit_IT(&huart1, BufferTx, lenTx);
 		} else if(flag == 0) {
 			flag = 1;
 			HAL_UART_Transmit_IT(&huart1, (uint8_t*)"\n\r", sizeof("\n\r"));
@@ -248,10 +253,9 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	if(huart == &huart1) {
 		if(rx[0] == '\r') {
-			uint16_t len = RingBuffer_GetDataLength(&ringbuf);
-			uint8_t Buffer[len];
-			RingBuffer_Read(&ringbuf, Buffer, sizeof(Buffer));
-			HAL_UART_Transmit_IT(&huart1, Buffer, len);
+			lenRx = RingBuffer_GetDataLength(&ringbuf);
+			RingBuffer_Read(&ringbuf, BufferRx, lenRx);
+			HAL_UART_Transmit_IT(&huart1, BufferRx, lenRx);
 		} else {
 			RingBuffer_Write(&ringbuf, rx, sizeof(rx));
 			HAL_UART_Receive_IT(&huart1, rx, sizeof(rx));
